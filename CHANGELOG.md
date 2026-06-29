@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+- Renamed extension from "Context Template Builder" to "Chatbot to Agent".
+- Updated command IDs and configuration namespace to `chatbotToAgent.*`.
+- Updated user-facing titles, messages, and webview heading.
+
 ## 0.1.0
 
 - Initial release.

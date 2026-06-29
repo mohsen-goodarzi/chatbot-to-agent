@@ -9,11 +9,11 @@ let attachedFiles = [];
 
 function activate(context) {
   context.subscriptions.push(
-    vscode.commands.registerCommand('contextTemplate.open', () => openPanel(context)),
-    vscode.commands.registerCommand('contextTemplate.addSelectedFile', (uri, uris) => {
+    vscode.commands.registerCommand('chatbotToAgent.open', () => openPanel(context)),
+    vscode.commands.registerCommand('chatbotToAgent.addSelectedFile', (uri, uris) => {
       const targets = uris && uris.length ? uris : uri ? [uri] : [];
       if (!targets.length) {
-        vscode.window.showInformationMessage('Context Template: no file selected.');
+        vscode.window.showInformationMessage('Chatbot to Agent: no file selected.');
         return;
       }
       openPanel(context);
@@ -38,7 +38,7 @@ function toRel(abs) {
 }
 
 function getConfig() {
-  const cfg = vscode.workspace.getConfiguration('contextTemplate');
+  const cfg = vscode.workspace.getConfiguration('chatbotToAgent');
   return {
     ignore: cfg.get('ignore') || [],
     maxTreeDepth: cfg.get('maxTreeDepth') || 8,
@@ -184,7 +184,7 @@ function addUris(uris) {
 async function pickFiles() {
   const wf = getWorkspaceFolder();
   if (!wf) {
-    vscode.window.showErrorMessage('Context Template: open a folder or workspace first.');
+    vscode.window.showErrorMessage('Chatbot to Agent: open a folder or workspace first.');
     return;
   }
   const cfg = getConfig();
@@ -194,7 +194,7 @@ async function pickFiles() {
     .sort(function (a, b) { return a.label.localeCompare(b.label); });
   const picked = await vscode.window.showQuickPick(items, {
     canPickMany: true,
-    placeHolder: 'Select files to attach to the context template'
+    placeHolder: 'Select files to attach to the context'
   });
   if (picked) addUris(picked.map(function (p) { return p.uri; }));
 }
@@ -227,13 +227,13 @@ async function generate(question, includeTree, outputMode) {
 
   if (outputMode === 'clipboard') {
     await vscode.env.clipboard.writeText(output);
-    vscode.window.showInformationMessage('Context template copied to clipboard.');
+    vscode.window.showInformationMessage('Context copied to clipboard.');
   } else if (outputMode === 'save' && wf) {
     const target = vscode.Uri.joinPath(wf.uri, 'context.md');
     fs.writeFileSync(target.fsPath, output, 'utf8');
     const doc = await vscode.workspace.openTextDocument(target);
     await vscode.window.showTextDocument(doc, vscode.ViewColumn.Beside);
-    vscode.window.showInformationMessage('Context template saved to context.md');
+    vscode.window.showInformationMessage('Context saved to context.md');
   } else {
     const doc = await vscode.workspace.openTextDocument({ language: 'markdown', content: output });
     await vscode.window.showTextDocument(doc, vscode.ViewColumn.Beside);
@@ -249,8 +249,8 @@ function openPanel(context) {
     return;
   }
   panel = vscode.window.createWebviewPanel(
-    'contextTemplateBuilder',
-    'Context Template Builder',
+    'chatbotToAgent',
+    'Chatbot to Agent',
     vscode.ViewColumn.One,
     { enableScripts: true, retainContextWhenHidden: true }
   );
@@ -303,7 +303,7 @@ function getHtml(nonce) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
-<title>Context Template Builder</title>
+<title>Chatbot to Agent</title>
 <style>
   body { font-family: var(--vscode-font-family); color: var(--vscode-foreground); padding: 14px; }
   h2 { font-size: 1.15em; margin: 0 0 6px; }
@@ -335,7 +335,7 @@ function getHtml(nonce) {
 </style>
 </head>
 <body>
-  <h2>Context Template Builder</h2>
+  <h2>Chatbot to Agent</h2>
   <p class="hint">Describe your task, attach the relevant files, then generate a ready-to-paste context file for your LLM coding agent.</p>
 
   <label class="section-label" for="question">Task / Question</label>
@@ -348,7 +348,7 @@ function getHtml(nonce) {
     <button id="clear" class="secondary">Clear</button>
   </div>
   <ul id="fileList"></ul>
-  <p class="hint">Tip: you can also right-click files in the Explorer &rarr; "Context Template: Add File to Builder".</p>
+  <p class="hint">Tip: you can also right-click files in the Explorer &rarr; "Chatbot to Agent: Add File to Builder".</p>
 
   <div class="row">
     <label><input type="checkbox" id="includeTree" checked> Include codebase tree</label>

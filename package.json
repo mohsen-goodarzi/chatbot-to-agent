@@ -27,26 +27,26 @@
   "contributes": {
     "commands": [
       {
-        "command": "contextTemplate.open",
-        "title": "Context Template: Open Builder"
+        "command": "chatbotToAgent.open",
+        "title": "Chatbot to Agent: Open Builder"
       },
       {
-        "command": "contextTemplate.addSelectedFile",
-        "title": "Context Template: Add File to Builder"
+        "command": "chatbotToAgent.addSelectedFile",
+        "title": "Chatbot to Agent: Add File to Builder"
       }
     ],
     "menus": {
       "explorer/context": [
         {
-          "command": "contextTemplate.addSelectedFile",
+          "command": "chatbotToAgent.addSelectedFile",
           "group": "navigation@99"
         }
       ]
     },
     "configuration": {
-      "title": "Context Template Builder",
+      "title": "Chatbot to Agent",
       "properties": {
-        "contextTemplate.ignore": {
+        "chatbotToAgent.ignore": {
           "type": "array",
           "items": { "type": "string" },
           "default": [
@@ -65,12 +65,12 @@
           ],
           "description": "Folder/file names (or *.ext patterns) excluded from the generated tree and the file picker."
         },
-        "contextTemplate.maxTreeDepth": {
+        "chatbotToAgent.maxTreeDepth": {
           "type": "number",
           "default": 8,
           "description": "Maximum directory depth shown in the generated tree."
         },
-        "contextTemplate.maxFileSizeKB": {
+        "chatbotToAgent.maxFileSizeKB": {
           "type": "number",
           "default": 200,
           "description": "Files larger than this size (KB) are listed but their contents are skipped."
