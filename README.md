@@ -2,7 +2,7 @@
 
 A small VS Code extension that let you use your chatbot like a coding agent. It helps you prepare a single, ready-to-paste context file
 for your LLM chatbot. You type your question, attach the relevant files, and the
-extension produces a filled `context-template.md` containing:
+extension produces a filled `context.md` containing:
 
 1. **Task / Question** — what you typed.
 2. **Codebase Tree** — an auto-generated tree of your workspace (ignoring `node_modules`, `.git`, etc.).
@@ -40,12 +40,12 @@ Or in VS Code: **Extensions view → "..." menu → Install from VSIX…** and p
 
 ## Usage
 
-1. Open the Command Palette (`Ctrl/Cmd+Shift+P`) and run **"Context Template: Open Builder"**.
+1. Open the Command Palette (`Ctrl/Cmd+Shift+P`) and run **"Chatbot to Agent: Open Builder"**.
 2. Type your **Task / Question**.
 3. Attach files using any of these:
    - **Add files…** button (multi-select picker of workspace files), or
    - **Add open editors** button, or
-   - Right-click files in the Explorer → **"Context Template: Add File to Builder"**.
+   - Right-click files in the Explorer → **"Chatbot to Agent: Add File to Builder"**.
 4. (Optional) Toggle **Include codebase tree** and pick an **Output** mode.
 5. Click **Generate**.
 6. Paste/attach the generated markdown into your LLM chat.
@@ -62,12 +62,12 @@ Or in VS Code: **Extensions view → "..." menu → Install from VSIX…** and p
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `contextTemplate.ignore` | `node_modules`, `.git`, `dist`, `build`, `out`, `.next`, `.vscode`, `__pycache__`, `.venv`, `venv`, `*.log`, `*.lock` | Names / `*.ext` patterns excluded from the tree and file picker. |
-| `contextTemplate.maxTreeDepth` | `8` | Maximum directory depth in the generated tree. |
-| `contextTemplate.maxFileSizeKB` | `200` | Files larger than this are listed but their contents are skipped. |
+| `chatbotToAgent.ignore` | `node_modules`, `.git`, `dist`, `build`, `out`, `.next`, `.vscode`, `__pycache__`, `.venv`, `venv`, `*.log`, `*.lock` | Names / `*.ext` patterns excluded from the tree and file picker. |
+| `chatbotToAgent.maxTreeDepth` | `8` | Maximum directory depth in the generated tree. |
+| `chatbotToAgent.maxFileSizeKB` | `200` | Files larger than this are listed but their contents are skipped. |
 
 ## Notes
 
 - The generated file uses dynamic code-fence lengths, so files that themselves contain
   triple backticks won't break the Markdown.
-- This extension is local/unsigned; the `publisher` is set to `local-dev` for VSIX install.
+- This extension is published under the `MohsenGoodarzi` publisher id (set in `package.json`).
