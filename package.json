@@ -2,7 +2,7 @@
   "name": "chatbot-to-agent",
   "displayName": "Chatbot to Agent",
   "description": "Build a ready-to-paste context file for your LLM coding agent: question + codebase tree + attached file contents.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "MohsenGoodarzi",
   "license": "MIT",
   "repository": {
@@ -48,7 +48,9 @@
       "properties": {
         "chatbotToAgent.ignore": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [
             "node_modules",
             ".git",
