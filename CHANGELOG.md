@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0
+
+- Tree generation now respects the workspace `.gitignore` (toggle via `chatbotToAgent.useGitignore`).
+- Added an optional "Exclude from tree" input to omit specific paths.
+- The exclude input supports glob/wildcard patterns such as `*.wav`, `**/*.png`, plus folder paths (comma-separated).
+
 ## 0.1.1
 
 - Renamed extension from "Context Template Builder" to "Chatbot to Agent".

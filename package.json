@@ -2,7 +2,7 @@
   "name": "chatbot-to-agent",
   "displayName": "Chatbot to Agent",
   "description": "Build a ready-to-paste context file for your LLM coding agent: question + codebase tree + attached file contents.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "publisher": "MohsenGoodarzi",
   "license": "MIT",
   "repository": {
@@ -66,6 +66,11 @@
             "*.lock"
           ],
           "description": "Folder/file names (or *.ext patterns) excluded from the generated tree and the file picker."
+        },
+        "chatbotToAgent.useGitignore": {
+          "type": "boolean",
+          "default": true,
+          "description": "Also exclude files/folders matched by the workspace .gitignore from the generated tree."
         },
         "chatbotToAgent.maxTreeDepth": {
           "type": "number",

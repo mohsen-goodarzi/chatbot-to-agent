@@ -42,7 +42,8 @@ function getConfig() {
   return {
     ignore: cfg.get('ignore') || [],
     maxTreeDepth: cfg.get('maxTreeDepth') || 8,
-    maxFileSizeKB: cfg.get('maxFileSizeKB') || 200
+    maxFileSizeKB: cfg.get('maxFileSizeKB') || 200,
+    useGitignore: cfg.get('useGitignore') !== false
   };
 }
 
@@ -60,7 +61,78 @@ function buildExcludeGlob(ignore) {
   return '{' + parts.join(',') + '}';
 }
 
-function buildTree(dir, prefix, ignore, depth, maxDepth) {
+function loadGitignorePatterns(rootDir) {
+  const patterns = [];
+  try {
+    const content = fs.readFileSync(path.join(rootDir, '.gitignore'), 'utf8');
+    content.split(/\r?\n/).forEach(function (line) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.charAt(0) === '#') return;
+      patterns.push(trimmed);
+    });
+  } catch (e) { /* no .gitignore */ }
+  return patterns;
+}
+
+function globToRegex(pattern, anchored) {
+  let re = '';
+  for (let i = 0; i < pattern.length; i++) {
+    const c = pattern[i];
+    if (c === '*') {
+      if (pattern[i + 1] === '*') {
+        re += '.*';
+        i++;
+        if (pattern[i + 1] === '/') i++;
+      } else {
+        re += '[^/]*';
+      }
+    } else if (c === '?') {
+      re += '[^/]';
+    } else if ('.+^${}()|[]\\'.indexOf(c) !== -1) {
+      re += '\\' + c;
+    } else {
+      re += c;
+    }
+  }
+  const prefix = anchored ? '^' : '(^|/)';
+  return new RegExp(prefix + re + '($|/)');
+}
+
+function buildGitignoreMatcher(patterns) {
+  if (!patterns.length) return null;
+  const rules = patterns.map(function (raw) {
+    let pattern = raw;
+    let negated = false;
+    if (pattern.charAt(0) === '!') { negated = true; pattern = pattern.slice(1); }
+    let dirOnly = false;
+    if (pattern.slice(-1) === '/') { dirOnly = true; pattern = pattern.slice(0, -1); }
+    let anchored = false;
+    if (pattern.charAt(0) === '/') { anchored = true; pattern = pattern.slice(1); }
+    if (pattern.indexOf('/') !== -1) anchored = true;
+    return { regex: globToRegex(pattern, anchored), negated: negated, dirOnly: dirOnly };
+  });
+  return function (relPath, isDir) {
+    let ignored = false;
+    for (let i = 0; i < rules.length; i++) {
+      const r = rules[i];
+      if (r.dirOnly && !isDir) continue;
+      if (r.regex.test(relPath)) ignored = !r.negated;
+    }
+    return ignored;
+  };
+}
+
+function normalizeExcludePaths(input) {
+  if (!input) return [];
+  return String(input)
+    .split(',')
+    .map(function (p) {
+      return p.trim().replace(/^[.][/]/, '').replace(/^[/]+/, '').replace(/[/]+$/, '');
+    })
+    .filter(function (p) { return p.length > 0; });
+}
+
+function buildTree(dir, prefix, ctx, depth) {
   let result = '';
   let entries;
   try {
@@ -69,7 +141,11 @@ function buildTree(dir, prefix, ignore, depth, maxDepth) {
     return '';
   }
   entries = entries.filter(function (e) {
-    return !isIgnored(e.name, ignore);
+    if (isIgnored(e.name, ctx.ignore)) return false;
+    const rel = path.relative(ctx.root, path.join(dir, e.name)).split(path.sep).join('/');
+    if (ctx.excludeMatch && ctx.excludeMatch(rel, e.isDirectory())) return false;
+    if (ctx.gitignoreMatch && ctx.gitignoreMatch(rel, e.isDirectory())) return false;
+    return true;
   });
   entries.sort(function (a, b) {
     if (a.isDirectory() && !b.isDirectory()) return -1;
@@ -80,9 +156,9 @@ function buildTree(dir, prefix, ignore, depth, maxDepth) {
     const isLast = idx === entries.length - 1;
     const connector = isLast ? '\u2514\u2500\u2500 ' : '\u251c\u2500\u2500 ';
     result += prefix + connector + entry.name + (entry.isDirectory() ? '/' : '') + '\n';
-    if (entry.isDirectory() && depth < maxDepth) {
+    if (entry.isDirectory() && depth < ctx.maxDepth) {
       const newPrefix = prefix + (isLast ? '    ' : '\u2502   ');
-      result += buildTree(path.join(dir, entry.name), newPrefix, ignore, depth + 1, maxDepth);
+      result += buildTree(path.join(dir, entry.name), newPrefix, ctx, depth + 1);
     }
   });
   return result;
@@ -212,13 +288,22 @@ function getOpenEditorUris() {
 
 /* ---------- generation ---------- */
 
-async function generate(question, includeTree, outputMode) {
+async function generate(question, includeTree, outputMode, excludePath) {
   const cfg = getConfig();
   const wf = getWorkspaceFolder();
   let treeText = '';
   if (includeTree && wf) {
     const root = path.basename(wf.uri.fsPath);
-    treeText = root + '/\n' + buildTree(wf.uri.fsPath, '', cfg.ignore, 0, cfg.maxTreeDepth);
+    const ctx = {
+      root: wf.uri.fsPath,
+      ignore: cfg.ignore,
+      maxDepth: cfg.maxTreeDepth,
+      excludeMatch: buildGitignoreMatcher(normalizeExcludePaths(excludePath)),
+      gitignoreMatch: cfg.useGitignore
+        ? buildGitignoreMatcher(loadGitignorePatterns(wf.uri.fsPath))
+        : null
+    };
+    treeText = root + '/\n' + buildTree(wf.uri.fsPath, '', ctx, 0);
   }
   const files = attachedFiles.map(function (f) {
     return { rel: f.rel, content: readFileSafe(f.abs, cfg.maxFileSizeKB) };
@@ -273,7 +358,7 @@ function openPanel(context) {
         postFiles();
         break;
       case 'generate':
-        await generate(msg.question, msg.includeTree, msg.outputMode);
+        await generate(msg.question, msg.includeTree, msg.outputMode, msg.excludePath);
         break;
     }
   }, undefined, context.subscriptions);
@@ -313,6 +398,10 @@ function getHtml(nonce) {
     background: var(--vscode-input-background); color: var(--vscode-input-foreground);
     border: 1px solid var(--vscode-input-border, transparent); border-radius: 4px;
     padding: 8px; font-family: var(--vscode-font-family); resize: vertical; }
+  input[type="text"] { width: 100%; box-sizing: border-box; margin-top: 6px;
+    background: var(--vscode-input-background); color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-input-border, transparent); border-radius: 4px;
+    padding: 6px 8px; font-family: var(--vscode-font-family); }
   .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
   button { background: var(--vscode-button-background); color: var(--vscode-button-foreground);
     border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
@@ -353,6 +442,10 @@ function getHtml(nonce) {
   <div class="row">
     <label><input type="checkbox" id="includeTree" checked> Include codebase tree</label>
   </div>
+  <label class="section-label" for="excludePath">Exclude from tree (optional)</label>
+  <input type="text" id="excludePath" placeholder="e.g. src/generated, *.wav, **/*.png (comma-separated)">
+  <p class="hint">Supports glob patterns (<code>*.wav</code>, <code>**/*.png</code>) and paths. Files in <code>.gitignore</code> are excluded automatically.</p>
+
   <div class="row">
     <label for="outputMode">Output:</label>
     <select id="outputMode">
@@ -369,19 +462,27 @@ function getHtml(nonce) {
     const listEl = document.getElementById('fileList');
     const treeEl = document.getElementById('includeTree');
     const outEl = document.getElementById('outputMode');
+    const excludeEl = document.getElementById('excludePath');
     let files = [];
 
     const prev = vscode.getState() || {};
     if (prev.question) qEl.value = prev.question;
     if (typeof prev.includeTree === 'boolean') treeEl.checked = prev.includeTree;
     if (prev.outputMode) outEl.value = prev.outputMode;
+    if (prev.excludePath) excludeEl.value = prev.excludePath;
 
     function saveState() {
-      vscode.setState({ question: qEl.value, includeTree: treeEl.checked, outputMode: outEl.value });
+      vscode.setState({
+        question: qEl.value,
+        includeTree: treeEl.checked,
+        outputMode: outEl.value,
+        excludePath: excludeEl.value
+      });
     }
     qEl.addEventListener('input', saveState);
     treeEl.addEventListener('change', saveState);
     outEl.addEventListener('change', saveState);
+    excludeEl.addEventListener('input', saveState);
 
     function render() {
       listEl.innerHTML = '';
@@ -424,7 +525,8 @@ function getHtml(nonce) {
         command: 'generate',
         question: qEl.value,
         includeTree: treeEl.checked,
-        outputMode: outEl.value
+        outputMode: outEl.value,
+        excludePath: excludeEl.value
       });
     });
 

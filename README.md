@@ -5,7 +5,7 @@ for your LLM chatbot. You type your question, attach the relevant files, and the
 extension produces a filled `context.md` containing:
 
 1. **Task / Question** — what you typed.
-2. **Codebase Tree** — an auto-generated tree of your workspace (ignoring `node_modules`, `.git`, etc.).
+2. **Codebase Tree** — an auto-generated tree of your workspace (ignoring `node_modules`, `.git`, anything in `.gitignore`, etc.).
 3. **Relevant File Contents** — the full contents of the files you attached, each in a fenced code block.
 
 ## Why?
@@ -23,9 +23,9 @@ Requires [Node.js](https://nodejs.org/).
 ```bash
 # from inside the chatbot-to-agent/ folder
 npx @vscode/vsce package
-# -> produces chatbot-to-agent-0.1.0.vsix
+# -> produces chatbot-to-agent-0.2.0.vsix
 
-code --install-extension chatbot-to-agent-0.1.0.vsix
+code --install-extension chatbot-to-agent-0.2.0.vsix
 ```
 
 Or in VS Code: **Extensions view → "..." menu → Install from VSIX…** and pick the file.
@@ -46,9 +46,22 @@ Or in VS Code: **Extensions view → "..." menu → Install from VSIX…** and p
    - **Add files…** button (multi-select picker of workspace files), or
    - **Add open editors** button, or
    - Right-click files in the Explorer → **"Chatbot to Agent: Add File to Builder"**.
-4. (Optional) Toggle **Include codebase tree** and pick an **Output** mode.
-5. Click **Generate**.
-6. Paste/attach the generated markdown into your LLM chat.
+4. (Optional) Toggle **Include codebase tree** and add any paths/patterns to **Exclude from tree**.
+5. (Optional) Pick an **Output** mode.
+6. Click **Generate**.
+7. Paste/attach the generated markdown into your LLM chat.
+
+## Excluding files from the tree
+
+The generated tree omits, in addition to the configured `ignore` names:
+
+- Everything matched by the workspace-root `.gitignore` (when `chatbotToAgent.useGitignore` is enabled).
+- Anything you type in the **Exclude from tree** field. This accepts comma-separated
+  entries using `.gitignore`-style glob semantics, for example:
+  - `*.wav` — files with that extension anywhere in the tree
+  - `**/*.png` — same idea, explicit recursive form
+  - `src/generated` — a specific folder path
+  - `dist/, *.map` — multiple entries
 
 ## Output modes
 
@@ -63,6 +76,7 @@ Or in VS Code: **Extensions view → "..." menu → Install from VSIX…** and p
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `chatbotToAgent.ignore` | `node_modules`, `.git`, `dist`, `build`, `out`, `.next`, `.vscode`, `__pycache__`, `.venv`, `venv`, `*.log`, `*.lock` | Names / `*.ext` patterns excluded from the tree and file picker. |
+| `chatbotToAgent.useGitignore` | `true` | Also exclude files/folders matched by the workspace `.gitignore` from the generated tree. |
 | `chatbotToAgent.maxTreeDepth` | `8` | Maximum directory depth in the generated tree. |
 | `chatbotToAgent.maxFileSizeKB` | `200` | Files larger than this are listed but their contents are skipped. |
 
@@ -70,4 +84,7 @@ Or in VS Code: **Extensions view → "..." menu → Install from VSIX…** and p
 
 - The generated file uses dynamic code-fence lengths, so files that themselves contain
   triple backticks won't break the Markdown.
+- `.gitignore` support reads the workspace-root `.gitignore` and supports common glob
+  rules (`*`, `**`, `?`, leading `/` anchoring, trailing `/` dir-only, and `!` negation).
+  Nested per-directory `.gitignore` files are not parsed.
 - This extension is published under the `MohsenGoodarzi` publisher id (set in `package.json`).
